@@ -50,6 +50,12 @@
     "eventsource": "^4.0.0",
     "winston": "^3.17.0"
   },
+  "optionalDependencies": {
+    "natural": "^8.0.1",
+    "compromise": "^14.14.2",
+    "jsonpath-plus": "^10.2.3",
+    "p-queue": "^8.0.1"
+  },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@types/jest": "^30.0.0",

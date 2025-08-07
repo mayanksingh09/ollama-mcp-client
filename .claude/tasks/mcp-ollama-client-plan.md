@@ -39,13 +39,13 @@ Build a Model Context Protocol (MCP) client that uses Ollama as the LLM backend,
 - [x] Create session management with state tracking
 
 ### Phase 4: Tool and Resource Management
-- [ ] Implement tool discovery (tools/list)
-- [ ] Create tool execution handler (tools/call)
-- [ ] Build tool parameter validation system
-- [ ] Implement resource listing (resources/list)
-- [ ] Add resource reading capabilities (resources/read)
-- [ ] Create prompt template management (prompts/list, prompts/get)
-- [ ] Implement sampling capabilities for prompts
+- [x] Implement tool discovery (tools/list)
+- [x] Create tool execution handler (tools/call)
+- [x] Build tool parameter validation system
+- [x] Implement resource listing (resources/list)
+- [x] Add resource reading capabilities (resources/read)
+- [x] Create prompt template management (prompts/list, prompts/get)
+- [x] Implement sampling capabilities for prompts
 
 ### Phase 5: Ollama-MCP Bridge Logic
 - [ ] Create conversation manager to maintain context

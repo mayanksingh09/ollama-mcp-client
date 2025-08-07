@@ -61,6 +61,7 @@ export interface MCPTool {
     type: 'object';
     properties: Record<string, unknown>;
     required?: string[];
+    additionalProperties?: boolean;
   };
 }
 
@@ -97,15 +98,18 @@ export interface MCPToolCall {
 }
 
 /**
+ * MCP tool call result content item
+ */
+export type MCPToolResultContent =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType?: string }
+  | { type: 'resource'; resource: { uri: string; text?: string; mimeType?: string } };
+
+/**
  * MCP tool call result
  */
 export interface MCPToolResult {
-  content: Array<{
-    type: 'text' | 'image' | 'resource';
-    text?: string;
-    data?: string;
-    mimeType?: string;
-  }>;
+  content: MCPToolResultContent[];
   isError?: boolean;
   metadata?: Record<string, unknown>;
 }
