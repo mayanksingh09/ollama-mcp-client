@@ -141,7 +141,7 @@ export class OllamaClient {
     request: ChatCompletionRequest,
     handlers?: StreamHandlers
   ): Promise<ChatCompletionResponse | void> {
-    const operation = async () => {
+    const operation = async (): Promise<ChatCompletionResponse | void> => {
       if (request.stream && handlers) {
         return this.chatStream(request, handlers);
       }
@@ -183,7 +183,7 @@ export class OllamaClient {
     request: GenerateRequest,
     handlers?: StreamHandlers
   ): Promise<GenerateResponse | void> {
-    const operation = async () => {
+    const operation = async (): Promise<GenerateResponse | void> => {
       if (request.stream && handlers) {
         return this.generateStream(request, handlers);
       }
@@ -219,7 +219,7 @@ export class OllamaClient {
   }
 
   async listModels(): Promise<ListModelsResponse> {
-    const operation = async () => {
+    const operation = async (): Promise<ListModelsResponse> => {
       const response = await this.axios.get<ListModelsResponse>('/api/tags');
 
       if (response.status !== 200) {
@@ -233,7 +233,7 @@ export class OllamaClient {
   }
 
   async showModel(request: ShowModelRequest): Promise<ShowModelResponse> {
-    const operation = async () => {
+    const operation = async (): Promise<ShowModelResponse> => {
       const response = await this.axios.post<ShowModelResponse>('/api/show', request);
 
       if (response.status === 404) {
@@ -251,7 +251,7 @@ export class OllamaClient {
   }
 
   async embeddings(request: EmbeddingRequest): Promise<EmbeddingResponse> {
-    const operation = async () => {
+    const operation = async (): Promise<EmbeddingResponse> => {
       const response = await this.axios.post<EmbeddingResponse>('/api/embed', request);
 
       if (response.status !== 200) {

@@ -26,6 +26,12 @@ export default [
         exports: true,
         module: true,
         require: true,
+        NodeJS: true,
+        setTimeout: true,
+        clearTimeout: true,
+        setInterval: true,
+        clearInterval: true,
+        URL: true,
       },
     },
     plugins: {

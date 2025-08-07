@@ -2,5 +2,8 @@
  * Transport layer exports
  */
 
-// Transport implementations will be added in Phase 3
-export {};
+export { Transport } from './Transport';
+export { StdioTransport } from './StdioTransport';
+export { HttpTransport } from './HttpTransport';
+export { TransportManager } from './TransportManager';
+export * from '../types/transport.types';
