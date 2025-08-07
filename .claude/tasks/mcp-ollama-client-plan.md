@@ -47,14 +47,14 @@ Build a Model Context Protocol (MCP) client that uses Ollama as the LLM backend,
 - [x] Create prompt template management (prompts/list, prompts/get)
 - [x] Implement sampling capabilities for prompts
 
-### Phase 5: Ollama-MCP Bridge Logic
-- [ ] Create conversation manager to maintain context
-- [ ] Implement tool decision logic using Ollama's reasoning
-- [ ] Build response parser for Ollama outputs
-- [ ] Create tool invocation formatter for MCP servers
-- [ ] Implement result injection back into conversation
-- [ ] Add context window management for long conversations
-- [ ] Create function calling simulation for models without native support
+### Phase 5: Ollama-MCP Bridge Logic ✅ COMPLETED
+- [x] Create conversation manager to maintain context
+- [x] Implement tool decision logic using Ollama's reasoning
+- [x] Build response parser for Ollama outputs
+- [x] Create tool invocation formatter for MCP servers
+- [x] Implement result injection back into conversation
+- [x] Add context window management for long conversations
+- [x] Create function calling simulation for models without native support
 
 ### Phase 6: Configuration and CLI Interface
 - [ ] Build CLI using Commander.js or Yargs
