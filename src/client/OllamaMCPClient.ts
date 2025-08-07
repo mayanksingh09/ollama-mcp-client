@@ -9,6 +9,9 @@ import { OllamaClient } from '../ollama/OllamaClient';
 import { TransportManager } from '../transport/TransportManager';
 import { SessionManager } from '../session/SessionManager';
 import { MessageHandler } from '../protocol/MessageHandler';
+import { ToolManager } from '../tools/ToolManager';
+import { ResourceManager } from '../resources/ResourceManager';
+import { PromptManager } from '../prompts/PromptManager';
 import type { ITransport } from '../types/transport.types';
 import type {
   OllamaMCPClientConfig,
@@ -34,6 +37,9 @@ export class OllamaMCPClient extends EventEmitter {
   private ollamaClient: OllamaClient;
   private transportManager: TransportManager;
   private sessionManager: SessionManager;
+  private toolManager: ToolManager;
+  private resourceManager: ResourceManager;
+  private promptManager: PromptManager;
   private messageHandlers: Map<string, MessageHandler> = new Map();
   private mcpClients: Map<string, Client> = new Map();
   private config: OllamaMCPClientConfig;
@@ -52,6 +58,11 @@ export class OllamaMCPClient extends EventEmitter {
       persist: config.session?.persist,
       storagePath: config.session?.storagePath,
     });
+
+    // Initialize new managers
+    this.toolManager = new ToolManager(config.tools);
+    this.resourceManager = new ResourceManager(config.resources);
+    this.promptManager = new PromptManager(config.prompts);
 
     // Initialize logger
     this.logger = winston.createLogger({
@@ -123,6 +134,11 @@ export class OllamaMCPClient extends EventEmitter {
       // Store client and setup handlers
       this.mcpClients.set(serverId, client);
       this.setupClientHandlers(serverId, client, session);
+
+      // Register client with managers
+      this.toolManager.registerClient(serverId, client);
+      this.resourceManager.registerClient(serverId, client);
+      this.promptManager.registerClient(serverId, client);
 
       // Update connection info
       const connectionInfo: ConnectionInfo = {
@@ -207,23 +223,12 @@ export class OllamaMCPClient extends EventEmitter {
    * List available tools from connected servers
    */
   async listTools(serverId?: string): Promise<MCPTool[]> {
-    const tools: MCPTool[] = [];
-    const clients = serverId
-      ? [this.mcpClients.get(serverId)].filter(Boolean)
-      : Array.from(this.mcpClients.values());
-
-    for (const client of clients) {
-      if (client) {
-        try {
-          const result = await client.listTools();
-          tools.push(...(result.tools as unknown as MCPTool[]));
-        } catch (error) {
-          this.logger.error('Error listing tools', { error });
-        }
-      }
-    }
-
-    return tools;
+    const extendedTools = await this.toolManager.listTools(serverId ? { serverId } : undefined);
+    return extendedTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }));
   }
 
   /**
@@ -234,89 +239,50 @@ export class OllamaMCPClient extends EventEmitter {
     args?: Record<string, unknown>,
     serverId?: string
   ): Promise<MCPToolResult> {
-    const client = serverId
-      ? this.mcpClients.get(serverId)
-      : Array.from(this.mcpClients.values())[0];
-
-    if (!client) {
-      throw new Error('No connected MCP server');
-    }
-
-    try {
-      const result = await client.callTool({ name: toolName, arguments: args || {} });
-      return result as unknown as MCPToolResult;
-    } catch (error) {
-      this.logger.error('Error calling tool', { toolName, error });
-      throw error;
-    }
+    const result = await this.toolManager.executeTool(toolName, args, { serverId });
+    return {
+      content: result.content,
+      isError: result.isError,
+      metadata: result.metadata,
+    };
   }
 
   /**
    * List available resources
    */
   async listResources(serverId?: string): Promise<MCPResource[]> {
-    const resources: MCPResource[] = [];
-    const clients = serverId
-      ? [this.mcpClients.get(serverId)].filter(Boolean)
-      : Array.from(this.mcpClients.values());
-
-    for (const client of clients) {
-      if (client) {
-        try {
-          const result = await client.listResources();
-          resources.push(...(result.resources as unknown as MCPResource[]));
-        } catch (error) {
-          this.logger.error('Error listing resources', { error });
-        }
-      }
-    }
-
-    return resources;
+    const result = await this.resourceManager.listResources(
+      serverId ? { filter: { serverId } } : undefined
+    );
+    return result.resources.map((r) => ({
+      uri: r.uri,
+      name: r.name,
+      description: r.description,
+      mimeType: r.mimeType,
+      metadata: r.metadata,
+    }));
   }
 
   /**
    * Read a resource
    */
   async readResource(uri: string, serverId?: string): Promise<string> {
-    const client = serverId
-      ? this.mcpClients.get(serverId)
-      : Array.from(this.mcpClients.values())[0];
-
-    if (!client) {
-      throw new Error('No connected MCP server');
-    }
-
-    try {
-      const result = await client.readResource({ uri });
-      const content = result.contents[0] as { text?: string };
-      return content?.text || '';
-    } catch (error) {
-      this.logger.error('Error reading resource', { uri, error });
-      throw error;
-    }
+    const result = await this.resourceManager.readResource(uri, serverId);
+    return result.text || '';
   }
 
   /**
    * List available prompts
    */
   async listPrompts(serverId?: string): Promise<MCPPrompt[]> {
-    const prompts: MCPPrompt[] = [];
-    const clients = serverId
-      ? [this.mcpClients.get(serverId)].filter(Boolean)
-      : Array.from(this.mcpClients.values());
-
-    for (const client of clients) {
-      if (client) {
-        try {
-          const result = await client.listPrompts();
-          prompts.push(...(result.prompts as unknown as MCPPrompt[]));
-        } catch (error) {
-          this.logger.error('Error listing prompts', { error });
-        }
-      }
-    }
-
-    return prompts;
+    const extendedPrompts = await this.promptManager.listPrompts(
+      serverId ? { serverId } : undefined
+    );
+    return extendedPrompts.map((p) => ({
+      name: p.name,
+      description: p.description,
+      arguments: p.arguments,
+    }));
   }
 
   /**
@@ -327,21 +293,8 @@ export class OllamaMCPClient extends EventEmitter {
     args?: Record<string, string>,
     serverId?: string
   ): Promise<{ messages: Array<{ role: string; content: string }> }> {
-    const client = serverId
-      ? this.mcpClients.get(serverId)
-      : Array.from(this.mcpClients.values())[0];
-
-    if (!client) {
-      throw new Error('No connected MCP server');
-    }
-
-    try {
-      const result = await client.getPrompt({ name, arguments: args });
-      return result as unknown as { messages: Array<{ role: string; content: string }> };
-    } catch (error) {
-      this.logger.error('Error getting prompt', { name, error });
-      throw error;
-    }
+    const result = await this.promptManager.executePrompt(name, args, undefined, serverId);
+    return { messages: result.messages };
   }
 
   /**
@@ -358,7 +311,14 @@ export class OllamaMCPClient extends EventEmitter {
 
     try {
       // Get available tools
-      const tools = await this.listTools(options?.serverId);
+      const extendedTools = await this.toolManager.listTools(
+        options?.serverId ? { serverId: options.serverId } : undefined
+      );
+      const tools = extendedTools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema,
+      }));
 
       // Prepare system prompt with tool descriptions
       const systemPrompt = this.buildSystemPrompt(tools, options?.systemPrompt);
@@ -398,10 +358,18 @@ export class OllamaMCPClient extends EventEmitter {
         });
 
         try {
-          const result = await this.callTool(toolCall.name, toolCall.arguments, options?.serverId);
+          const result = await this.toolManager.executeTool(toolCall.name, toolCall.arguments, {
+            serverId: options?.serverId,
+          });
 
-          toolResults.push(result);
-          this.sessionManager.updateToolCallResult(session.id, toolEntry.id, result);
+          const mcpResult: MCPToolResult = {
+            content: result.content,
+            isError: result.isError,
+            metadata: result.metadata,
+          };
+
+          toolResults.push(mcpResult);
+          this.sessionManager.updateToolCallResult(session.id, toolEntry.id, mcpResult);
         } catch (error) {
           this.sessionManager.updateToolCallResult(
             session.id,
@@ -732,6 +700,9 @@ export class OllamaMCPClient extends EventEmitter {
     await this.disconnectAll();
     await this.sessionManager.cleanup();
     await this.transportManager.cleanup();
+    await this.toolManager.cleanup();
+    await this.resourceManager.cleanup();
+    await this.promptManager.cleanup();
 
     this.logger.info('OllamaMCPClient cleaned up');
   }

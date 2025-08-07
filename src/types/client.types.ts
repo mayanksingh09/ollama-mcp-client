@@ -4,6 +4,9 @@
 
 import type { OllamaConfig } from '../ollama/types';
 import type { MCPClientOptions, MCPSessionState } from './mcp.types';
+import type { ToolManagerConfig } from './tools.types';
+import type { ResourceManagerConfig } from './resources.types';
+import type { PromptManagerConfig } from './prompts.types';
 
 /**
  * Ollama MCP Client configuration
@@ -17,6 +20,12 @@ export interface OllamaMCPClientConfig {
   logging?: LoggingConfig;
   /** Session configuration */
   session?: SessionConfig;
+  /** Tool manager configuration */
+  tools?: ToolManagerConfig;
+  /** Resource manager configuration */
+  resources?: ResourceManagerConfig;
+  /** Prompt manager configuration */
+  prompts?: PromptManagerConfig;
 }
 
 /**

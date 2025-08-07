@@ -3,6 +3,8 @@
  * Configure global test environment
  */
 
+import { jest } from '@jest/globals';
+
 // Extend test timeout for integration tests
 jest.setTimeout(30000);
 

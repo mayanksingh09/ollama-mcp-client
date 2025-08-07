@@ -16,12 +16,44 @@ import winston from 'winston';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+// Performance tracking interfaces
+interface ToolExecutionMetrics {
+  toolName: string;
+  executionTime: number;
+  success: boolean;
+  timestamp: Date;
+  serverId?: string;
+}
+
+interface ResourceAccessMetrics {
+  uri: string;
+  fromCache: boolean;
+  size?: number;
+  accessTime: number;
+  timestamp: Date;
+  serverId?: string;
+}
+
+interface PromptUsageMetrics {
+  promptName: string;
+  tokenCount?: number;
+  executionTime: number;
+  success: boolean;
+  timestamp: Date;
+  serverId?: string;
+}
+
 export class SessionManager extends EventEmitter {
   private sessions: Map<string, ClientSession> = new Map();
   private activeSessionId?: string;
   private logger: Logger;
   private persistPath?: string;
   private autosaveInterval?: NodeJS.Timeout;
+
+  // Enhanced tracking
+  private toolExecutionHistory: Map<string, ToolExecutionMetrics[]> = new Map();
+  private resourceAccessHistory: Map<string, ResourceAccessMetrics[]> = new Map();
+  private promptUsageHistory: Map<string, PromptUsageMetrics[]> = new Map();
 
   constructor(options?: { persist?: boolean; storagePath?: string }) {
     super();
@@ -443,6 +475,258 @@ export class SessionManager extends EventEmitter {
   }
 
   /**
+   * Track tool execution
+   */
+  trackToolExecution(
+    sessionId: string,
+    toolName: string,
+    executionTime: number,
+    success: boolean,
+    serverId?: string
+  ): void {
+    const metrics: ToolExecutionMetrics = {
+      toolName,
+      executionTime,
+      success,
+      timestamp: new Date(),
+      serverId,
+    };
+
+    if (!this.toolExecutionHistory.has(sessionId)) {
+      this.toolExecutionHistory.set(sessionId, []);
+    }
+    this.toolExecutionHistory.get(sessionId)?.push(metrics);
+
+    this.emit('toolExecutionTracked', metrics);
+  }
+
+  /**
+   * Track resource access
+   */
+  trackResourceAccess(
+    sessionId: string,
+    uri: string,
+    fromCache: boolean,
+    accessTime: number,
+    size?: number,
+    serverId?: string
+  ): void {
+    const metrics: ResourceAccessMetrics = {
+      uri,
+      fromCache,
+      size,
+      accessTime,
+      timestamp: new Date(),
+      serverId,
+    };
+
+    if (!this.resourceAccessHistory.has(sessionId)) {
+      this.resourceAccessHistory.set(sessionId, []);
+    }
+    this.resourceAccessHistory.get(sessionId)?.push(metrics);
+
+    this.emit('resourceAccessTracked', metrics);
+  }
+
+  /**
+   * Track prompt usage
+   */
+  trackPromptUsage(
+    sessionId: string,
+    promptName: string,
+    executionTime: number,
+    success: boolean,
+    tokenCount?: number,
+    serverId?: string
+  ): void {
+    const metrics: PromptUsageMetrics = {
+      promptName,
+      tokenCount,
+      executionTime,
+      success,
+      timestamp: new Date(),
+      serverId,
+    };
+
+    if (!this.promptUsageHistory.has(sessionId)) {
+      this.promptUsageHistory.set(sessionId, []);
+    }
+    this.promptUsageHistory.get(sessionId)?.push(metrics);
+
+    this.emit('promptUsageTracked', metrics);
+  }
+
+  /**
+   * Get performance metrics
+   */
+  getPerformanceMetrics(sessionId?: string): {
+    tools: {
+      totalExecutions: number;
+      averageExecutionTime: number;
+      successRate: number;
+      topTools: Array<{ name: string; count: number; avgTime: number }>;
+    };
+    resources: {
+      totalAccesses: number;
+      cacheHitRate: number;
+      averageAccessTime: number;
+      totalDataTransferred: number;
+    };
+    prompts: {
+      totalUsages: number;
+      averageExecutionTime: number;
+      successRate: number;
+      totalTokens: number;
+    };
+  } {
+    const sid = sessionId || this.activeSessionId;
+    const toolMetrics = sid ? this.toolExecutionHistory.get(sid) || [] : [];
+    const resourceMetrics = sid ? this.resourceAccessHistory.get(sid) || [] : [];
+    const promptMetrics = sid ? this.promptUsageHistory.get(sid) || [] : [];
+
+    // Calculate tool metrics
+    const toolStats = new Map<string, { count: number; totalTime: number; successes: number }>();
+    let totalToolTime = 0;
+    let toolSuccesses = 0;
+
+    for (const metric of toolMetrics) {
+      const stats = toolStats.get(metric.toolName) || { count: 0, totalTime: 0, successes: 0 };
+      stats.count++;
+      stats.totalTime += metric.executionTime;
+      if (metric.success) {
+        stats.successes++;
+        toolSuccesses++;
+      }
+      toolStats.set(metric.toolName, stats);
+      totalToolTime += metric.executionTime;
+    }
+
+    const topTools = Array.from(toolStats.entries())
+      .map(([name, stats]) => ({
+        name,
+        count: stats.count,
+        avgTime: stats.totalTime / stats.count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Calculate resource metrics
+    let cacheHits = 0;
+    let totalAccessTime = 0;
+    let totalDataSize = 0;
+
+    for (const metric of resourceMetrics) {
+      if (metric.fromCache) cacheHits++;
+      totalAccessTime += metric.accessTime;
+      if (metric.size) totalDataSize += metric.size;
+    }
+
+    // Calculate prompt metrics
+    let promptSuccesses = 0;
+    let totalPromptTime = 0;
+    let totalTokens = 0;
+
+    for (const metric of promptMetrics) {
+      if (metric.success) promptSuccesses++;
+      totalPromptTime += metric.executionTime;
+      if (metric.tokenCount) totalTokens += metric.tokenCount;
+    }
+
+    return {
+      tools: {
+        totalExecutions: toolMetrics.length,
+        averageExecutionTime: toolMetrics.length > 0 ? totalToolTime / toolMetrics.length : 0,
+        successRate: toolMetrics.length > 0 ? (toolSuccesses / toolMetrics.length) * 100 : 0,
+        topTools,
+      },
+      resources: {
+        totalAccesses: resourceMetrics.length,
+        cacheHitRate: resourceMetrics.length > 0 ? (cacheHits / resourceMetrics.length) * 100 : 0,
+        averageAccessTime:
+          resourceMetrics.length > 0 ? totalAccessTime / resourceMetrics.length : 0,
+        totalDataTransferred: totalDataSize,
+      },
+      prompts: {
+        totalUsages: promptMetrics.length,
+        averageExecutionTime: promptMetrics.length > 0 ? totalPromptTime / promptMetrics.length : 0,
+        successRate: promptMetrics.length > 0 ? (promptSuccesses / promptMetrics.length) * 100 : 0,
+        totalTokens,
+      },
+    };
+  }
+
+  /**
+   * Get usage statistics
+   */
+  getUsageStatistics(sessionId?: string): {
+    mostUsedTools: Array<{ name: string; count: number }>;
+    mostAccessedResources: Array<{ uri: string; count: number }>;
+    mostUsedPrompts: Array<{ name: string; count: number }>;
+    sessionDuration: number;
+    totalInteractions: number;
+  } {
+    const sid = sessionId || this.activeSessionId;
+    const session = sid ? this.sessions.get(sid) : undefined;
+
+    if (!session) {
+      return {
+        mostUsedTools: [],
+        mostAccessedResources: [],
+        mostUsedPrompts: [],
+        sessionDuration: 0,
+        totalInteractions: 0,
+      };
+    }
+
+    // Count tool usage
+    const toolCounts = new Map<string, number>();
+    const toolMetrics = sid ? this.toolExecutionHistory.get(sid) || [] : [];
+    for (const metric of toolMetrics) {
+      toolCounts.set(metric.toolName, (toolCounts.get(metric.toolName) || 0) + 1);
+    }
+
+    // Count resource access
+    const resourceCounts = new Map<string, number>();
+    const resourceMetrics = sid ? this.resourceAccessHistory.get(sid) || [] : [];
+    for (const metric of resourceMetrics) {
+      resourceCounts.set(metric.uri, (resourceCounts.get(metric.uri) || 0) + 1);
+    }
+
+    // Count prompt usage
+    const promptCounts = new Map<string, number>();
+    const promptMetrics = sid ? this.promptUsageHistory.get(sid) || [] : [];
+    for (const metric of promptMetrics) {
+      promptCounts.set(metric.promptName, (promptCounts.get(metric.promptName) || 0) + 1);
+    }
+
+    return {
+      mostUsedTools: Array.from(toolCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+      mostAccessedResources: Array.from(resourceCounts.entries())
+        .map(([uri, count]) => ({ uri, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+      mostUsedPrompts: Array.from(promptCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+      sessionDuration: Date.now() - session.createdAt.getTime(),
+      totalInteractions: session.conversationHistory.length,
+    };
+  }
+
+  /**
+   * Clear tracking history for a session
+   */
+  clearTrackingHistory(sessionId: string): void {
+    this.toolExecutionHistory.delete(sessionId);
+    this.resourceAccessHistory.delete(sessionId);
+    this.promptUsageHistory.delete(sessionId);
+  }
+
+  /**
    * Cleanup
    */
   async cleanup(): Promise<void> {
@@ -452,9 +736,16 @@ export class SessionManager extends EventEmitter {
 
     await this.saveAllSessions();
 
+    // Clear all tracking history
     for (const sessionId of this.sessions.keys()) {
+      this.clearTrackingHistory(sessionId);
       await this.destroySession(sessionId);
     }
+
+    // Clear tracking maps
+    this.toolExecutionHistory.clear();
+    this.resourceAccessHistory.clear();
+    this.promptUsageHistory.clear();
 
     this.logger.info('SessionManager cleaned up');
   }
