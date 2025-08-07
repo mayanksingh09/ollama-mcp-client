@@ -1,0 +1,133 @@
+# Ollama MCP Client Configuration Example
+# Copy this file to ollama-mcp.config.yaml and customize it
+
+# Ollama Configuration
+ollama:
+  host: http://localhost:11434
+  model: llama2
+  timeout: 60000
+  # List of available models for quick switching
+  models:
+    - llama2
+    - codellama
+    - mistral
+    - phi
+
+# MCP Client Configuration
+mcp:
+  name: ollama-mcp-cli
+  version: 1.0.0
+  capabilities:
+    tools:
+      listTools: true
+      callTool: true
+    resources:
+      listResources: true
+      readResource: true
+    prompts:
+      listPrompts: true
+      getPrompt: true
+
+# Configured MCP Servers
+servers:
+  # Example: Local filesystem server
+  - name: filesystem
+    type: stdio
+    autoConnect: true
+    stdio:
+      command: mcp-server-filesystem
+      args:
+        - --root
+        - ./
+
+  # Example: GitHub server
+  - name: github
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: mcp-server-github
+      env:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+
+  # Example: Remote HTTP server
+  - name: api-server
+    type: http
+    autoConnect: false
+    http:
+      url: https://api.example.com/mcp
+      headers:
+        X-API-Key: ${API_KEY}
+
+  # Example: Local example server
+  - name: example
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: node
+      args:
+        - ./examples/example-mcp-server.js
+
+# Logging Configuration
+logging:
+  level: info # error, warn, info, debug, verbose
+  file: ~/.ollama-mcp/logs/client.log
+  console: true
+  format: simple # json, simple, pretty
+
+# Session Configuration
+session:
+  persist: true
+  storagePath: ~/.ollama-mcp/sessions
+  timeout: 3600000 # 1 hour
+  maxHistorySize: 100
+
+# Interactive Mode Configuration
+interactive:
+  prompt: '> '
+  historyFile: ~/.ollama-mcp/history
+  maxHistory: 1000
+  autoComplete: true
+  colors: true
+
+# Server Discovery Configuration
+discovery:
+  enabled: true
+  registryFile: ~/.ollama-mcp/servers.json
+  scanLocal: true
+  scanTimeout: 5000
+
+# Output Configuration
+output:
+  format: pretty # pretty, json, yaml
+  colors: true
+  truncate: true
+  maxLength: 1000
+
+# Tool Configuration
+tools:
+  cache:
+    enabled: true
+    ttl: 300000 # 5 minutes
+  validation:
+    strict: true
+  parallel:
+    enabled: true
+    maxConcurrent: 5
+
+# Resource Configuration
+resources:
+  cache:
+    enabled: true
+    maxSize: 100 # MB
+    ttl: 600000 # 10 minutes
+  transforms:
+    enabled: true
+
+# Prompt Configuration
+prompts:
+  cache:
+    enabled: true
+    ttl: 300000 # 5 minutes
+  sampling:
+    temperature: 0.7
+    maxTokens: 2048

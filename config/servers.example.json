@@ -1,0 +1,96 @@
+{
+  "servers": [
+    {
+      "name": "mcp-server-filesystem",
+      "description": "Access and manage local filesystem",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-filesystem",
+        "args": ["--root", "/"]
+      },
+      "tags": ["filesystem", "local", "files"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/filesystem"
+    },
+    {
+      "name": "mcp-server-github",
+      "description": "Interact with GitHub repositories",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-github"
+      },
+      "env": {
+        "GITHUB_TOKEN": "required"
+      },
+      "tags": ["github", "git", "repository"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/github"
+    },
+    {
+      "name": "mcp-server-slack",
+      "description": "Read and analyze Slack conversations",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-slack"
+      },
+      "env": {
+        "SLACK_TOKEN": "required"
+      },
+      "tags": ["slack", "chat", "communication"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/slack"
+    },
+    {
+      "name": "mcp-server-postgres",
+      "description": "Query and manage PostgreSQL databases",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-postgres"
+      },
+      "env": {
+        "DATABASE_URL": "required"
+      },
+      "tags": ["database", "postgres", "sql"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/postgres"
+    },
+    {
+      "name": "mcp-server-git",
+      "description": "Perform Git operations on repositories",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-git",
+        "args": ["--repo", "."]
+      },
+      "tags": ["git", "version-control"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/git"
+    },
+    {
+      "name": "mcp-server-sqlite",
+      "description": "Query and manage SQLite databases",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-sqlite",
+        "args": ["--db", "database.db"]
+      },
+      "tags": ["database", "sqlite", "sql"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/sqlite"
+    },
+    {
+      "name": "mcp-server-time",
+      "description": "Get current time and timezone information",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-time"
+      },
+      "tags": ["time", "timezone", "utility"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/time"
+    },
+    {
+      "name": "mcp-server-fetch",
+      "description": "Fetch and extract content from web pages",
+      "type": "stdio",
+      "stdio": {
+        "command": "mcp-server-fetch"
+      },
+      "tags": ["web", "http", "scraping"],
+      "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/fetch"
+    }
+  ]
+}

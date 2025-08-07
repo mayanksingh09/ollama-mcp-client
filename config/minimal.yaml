@@ -1,0 +1,21 @@
+# Minimal Ollama MCP Client Configuration
+# This is a minimal configuration to get started quickly
+
+ollama:
+  host: http://localhost:11434
+  model: llama2
+
+servers:
+  - name: filesystem
+    type: stdio
+    autoConnect: true
+    stdio:
+      command: mcp-server-filesystem
+      args: ['--root', './']
+
+logging:
+  level: info
+
+output:
+  format: pretty
+  colors: true

@@ -50,6 +50,16 @@ export default [
     },
   },
   {
+    // Special rules for CLI files where console output is expected
+    files: ['src/cli/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/consistent-type-imports': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', '*.js', '*.d.ts', 'coverage/**', '.husky/**', 'tests/**'],
   },
 ];

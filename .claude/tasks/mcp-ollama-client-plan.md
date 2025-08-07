@@ -56,14 +56,14 @@ Build a Model Context Protocol (MCP) client that uses Ollama as the LLM backend,
 - [x] Add context window management for long conversations
 - [x] Create function calling simulation for models without native support
 
-### Phase 6: Configuration and CLI Interface
-- [ ] Build CLI using Commander.js or Yargs
-- [ ] Add interactive mode for continuous conversations
-- [ ] Implement config file support (YAML/JSON)
-- [ ] Create server discovery mechanism
-- [ ] Add command for listing available MCP servers
-- [ ] Implement debug mode with verbose logging
-- [ ] Create help documentation system
+### Phase 6: Configuration and CLI Interface ✅ COMPLETED
+- [x] Build CLI using Commander.js or Yargs
+- [x] Add interactive mode for continuous conversations
+- [x] Implement config file support (YAML/JSON)
+- [x] Create server discovery mechanism
+- [x] Add command for listing available MCP servers
+- [x] Implement debug mode with verbose logging
+- [x] Create help documentation system
 
 ### Phase 7: Advanced Features
 - [ ] Implement multi-server connection support
