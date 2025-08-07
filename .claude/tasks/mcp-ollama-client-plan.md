@@ -21,13 +21,13 @@ Build a Model Context Protocol (MCP) client that uses Ollama as the LLM backend,
 - [x] Initialize Git repository and create .gitignore
 
 ### Phase 2: Ollama Integration Layer
-- [ ] Create Ollama API client wrapper
-- [ ] Implement chat completion endpoint integration (/api/chat)
-- [ ] Implement generate endpoint integration (/api/generate)
-- [ ] Add model listing and validation (/api/tags)
-- [ ] Create streaming response handler for real-time interactions
-- [ ] Implement error handling and retry logic for Ollama API
-- [ ] Add configuration manager for Ollama settings (host, port, model)
+- [x] Create Ollama API client wrapper
+- [x] Implement chat completion endpoint integration (/api/chat)
+- [x] Implement generate endpoint integration (/api/generate)
+- [x] Add model listing and validation (/api/tags)
+- [x] Create streaming response handler for real-time interactions
+- [x] Implement error handling and retry logic for Ollama API
+- [x] Add configuration manager for Ollama settings (host, port, model)
 
 ### Phase 3: MCP Client Core Implementation
 - [ ] Implement MCP client class extending SDK base
