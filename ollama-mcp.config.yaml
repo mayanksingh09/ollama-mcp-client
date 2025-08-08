@@ -15,6 +15,14 @@ servers:
         - '@modelcontextprotocol/server-postgres'
         - 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 
+  # Linear API Server (SSE)
+  - name: linear
+    type: sse
+    autoConnect: false # Set to true to connect automatically
+    sse:
+      url: 'https://mcp.linear.app/sse'
+      reconnectDelay: 5000 # Reconnect after 5 seconds if connection drops
+
 logging:
   level: info
 session:

@@ -91,6 +91,32 @@
       },
       "tags": ["web", "http", "scraping"],
       "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/fetch"
+    },
+    {
+      "name": "supabase",
+      "description": "Connect to Supabase PostgreSQL database",
+      "type": "stdio",
+      "stdio": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-postgres",
+          "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+        ]
+      },
+      "tags": ["database", "postgres", "supabase", "sql"],
+      "homepage": "https://supabase.com"
+    },
+    {
+      "name": "linear",
+      "description": "Connect to Linear API for project management",
+      "type": "sse",
+      "sse": {
+        "url": "https://mcp.linear.app/sse",
+        "reconnectDelay": 5000
+      },
+      "tags": ["project-management", "linear", "api", "sse"],
+      "homepage": "https://linear.app"
     }
   ]
 }
