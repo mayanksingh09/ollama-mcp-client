@@ -1,6 +1,13 @@
 # Example configuration file for Ollama MCP Client
-# Copy this to ollama-mcp.config.yaml or ollama-mcp.config.local.yaml
-# and customize with your settings
+#
+# Usage:
+# 1. Copy this file to one of:
+#    - ollama-mcp.config.local.yaml (recommended for API keys)
+#    - ollama-mcp.config.yaml
+# 2. Customize with your settings and API keys
+# 3. Remove or comment out servers you don't need
+#
+# Note: Files named *.local.yaml are gitignored by default to protect your API keys
 
 ollama:
   host: http://localhost:11434
@@ -27,6 +34,67 @@ servers:
       command: node
       args:
         - '/path/to/apollo-io-mcp-server/dist/index.js'
+      # Optional: Add environment variables if needed
+      # env:
+      #   APOLLO_API_KEY: 'your-api-key'
+
+  # Example: GitHub Server
+  - name: github
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-github'
+      env:
+        GITHUB_TOKEN: 'ghp_YOUR_GITHUB_TOKEN_HERE'
+
+  # Example: Slack Server
+  - name: slack
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-slack'
+      env:
+        SLACK_TOKEN: 'xoxb-YOUR_SLACK_TOKEN_HERE'
+
+  # Example: Custom HTTP API Server
+  - name: custom-api
+    type: http
+    autoConnect: false
+    http:
+      url: 'https://api.example.com/mcp'
+      headers:
+        'X-API-Key': 'YOUR_API_KEY_HERE'
+        'Content-Type': 'application/json'
+      authToken: 'Bearer YOUR_BEARER_TOKEN' # Alternative to headers
+      timeout: 30000 # 30 seconds
+
+  # Example: SSE (Server-Sent Events) Server
+  - name: sse-server
+    type: sse
+    autoConnect: false
+    sse:
+      url: 'https://example.com/sse'
+      headers:
+        Authorization: 'Bearer YOUR_TOKEN_HERE'
+      reconnectDelay: 5000 # Reconnect after 5 seconds
+
+  # Example: SQLite Database Server
+  - name: sqlite
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-sqlite'
+        - '--db'
+        - '/path/to/database.db'
 
   # Example: Filesystem Server
   - name: filesystem
@@ -38,6 +106,42 @@ servers:
         - '-y'
         - '@modelcontextprotocol/server-filesystem'
         - '/tmp' # Directory to allow access to
+
+  # Example: Git Server
+  - name: git
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-git'
+        - '--repo'
+        - '.' # Current directory, or specify a path
+
+  # Example: Time Server (no auth needed)
+  - name: time
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-time'
+
+  # Example: Web Fetch Server
+  - name: fetch
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-fetch'
+      # Optional: Add proxy settings
+      # env:
+      #   HTTP_PROXY: 'http://proxy.example.com:8080'
+      #   HTTPS_PROXY: 'http://proxy.example.com:8080'
 
 # Logging configuration
 logging:
