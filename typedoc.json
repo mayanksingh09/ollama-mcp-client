@@ -1,0 +1,65 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/index.ts"],
+  "out": "./docs/api",
+  "name": "Ollama MCP Client API",
+  "readme": "./README.md",
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+  "excludeExternals": false,
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "searchInComments": true,
+  "theme": "default",
+  "navigationLinks": {
+    "GitHub": "https://github.com/mayanksingh09/ollama-mcp-client",
+    "NPM": "https://www.npmjs.com/package/ollama-mcp-client"
+  },
+  "sidebarLinks": {
+    "Documentation": "/docs",
+    "Examples": "/examples",
+    "CLI Reference": "/docs/CLI.md"
+  },
+  "plugin": [],
+  "exclude": ["**/node_modules/**", "**/tests/**", "**/dist/**", "**/*.test.ts", "**/*.spec.ts"],
+  "externalPattern": ["**/node_modules/**"],
+  "hideGenerator": false,
+  "githubPages": false,
+  "disableSources": false,
+  "sourceLinkTemplate": "https://github.com/mayanksingh09/ollama-mcp-client/blob/main/{path}#L{line}",
+  "basePath": "./",
+  "sort": ["source-order", "alphabetical"],
+  "kindSortOrder": [
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Enum",
+    "Function",
+    "Variable",
+    "Namespace",
+    "Module"
+  ],
+  "categoryOrder": [
+    "Client",
+    "Ollama",
+    "Transport",
+    "Session",
+    "Tools",
+    "Resources",
+    "Prompts",
+    "Bridge",
+    "Types",
+    "Utilities",
+    "*"
+  ],
+  "groupOrder": [
+    "Classes",
+    "Interfaces",
+    "Type Aliases",
+    "Enumerations",
+    "Functions",
+    "Variables",
+    "*"
+  ]
+}
