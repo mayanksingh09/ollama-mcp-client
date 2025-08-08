@@ -23,6 +23,9 @@ export class ConfigManager {
         '.ollama-mcprc.json',
         '.ollama-mcprc.yaml',
         '.ollama-mcprc.yml',
+        'ollama-mcp.config.local.json', // Local config takes priority
+        'ollama-mcp.config.local.yaml',
+        'ollama-mcp.config.local.yml',
         'ollama-mcp.config.json',
         'ollama-mcp.config.yaml',
         'ollama-mcp.config.yml',

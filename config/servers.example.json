@@ -108,15 +108,15 @@
       "homepage": "https://supabase.com"
     },
     {
-      "name": "linear",
-      "description": "Connect to Linear API for project management",
-      "type": "sse",
-      "sse": {
-        "url": "https://mcp.linear.app/sse",
-        "reconnectDelay": 5000
+      "name": "apollo",
+      "description": "Apollo.io MCP Server for sales intelligence and engagement",
+      "type": "stdio",
+      "stdio": {
+        "command": "node",
+        "args": ["/path/to/apollo-io-mcp-server/dist/index.js"]
       },
-      "tags": ["project-management", "linear", "api", "sse"],
-      "homepage": "https://linear.app"
+      "tags": ["sales", "apollo", "crm", "engagement"],
+      "homepage": "https://apollo.io"
     }
   ]
 }

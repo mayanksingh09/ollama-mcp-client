@@ -33,6 +33,12 @@ Thumbs.db
 .env.test
 .env.production
 
+# Local configuration (contains API keys)
+ollama-mcp.config.yaml
+ollama-mcp.config.local.yaml
+*.local.yaml
+*.local.json
+
 # Logs
 logs/
 *.log

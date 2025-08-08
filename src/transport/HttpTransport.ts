@@ -289,7 +289,9 @@ export class HttpTransport extends Transport {
   }
 
   getType(): string {
-    return this.httpOptions.type;
+    // During construction, httpOptions might not be set yet
+    // Fall back to the options passed to the parent constructor
+    return this.httpOptions?.type || this.options?.type || 'http';
   }
 
   /**

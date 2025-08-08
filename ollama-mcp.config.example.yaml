@@ -1,0 +1,54 @@
+# Example configuration file for Ollama MCP Client
+# Copy this to ollama-mcp.config.yaml or ollama-mcp.config.local.yaml
+# and customize with your settings
+
+ollama:
+  host: http://localhost:11434
+  # model: llama3.2  # Optional: specify a model, or auto-detect will be used
+
+# MCP Servers Configuration
+servers:
+  # Example: Supabase PostgreSQL Server
+  - name: supabase
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-postgres'
+        - 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+
+  # Example: Apollo.io MCP Server (local)
+  - name: apollo
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: node
+      args:
+        - '/path/to/apollo-io-mcp-server/dist/index.js'
+
+  # Example: Filesystem Server
+  - name: filesystem
+    type: stdio
+    autoConnect: false
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-filesystem'
+        - '/tmp' # Directory to allow access to
+
+# Logging configuration
+logging:
+  level: info # Options: error, warn, info, debug, verbose
+
+# Session configuration
+session:
+  persist: true
+  storagePath: ~/.ollama-mcp/sessions
+
+# Output configuration
+output:
+  format: pretty # Options: pretty, json, yaml
+  colors: true
