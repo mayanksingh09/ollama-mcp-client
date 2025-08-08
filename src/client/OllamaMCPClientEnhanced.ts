@@ -576,26 +576,12 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
     });
   }
 
-  private setupClientHandlers(serverId: string, client: Client, _session: ClientSession): void {
-    const clientWithEvents = client as Client & {
-      on: (event: string, handler: (data: unknown) => void) => void;
-    };
-    clientWithEvents.on('notification', (notification: unknown) => {
-      const notif = notification as { method: string; params?: unknown };
-      const { method, params } = notif;
-      this.logger.debug('Notification received', { serverId, method, params });
-
-      switch (method) {
-        case 'notifications/tools/list_changed':
-          this.emit('toolsUpdated', serverId, params);
-          break;
-        case 'notifications/resources/list_changed':
-          this.emit('resourcesUpdated', serverId, params);
-          break;
-        case 'notifications/prompts/list_changed':
-          this.emit('promptsUpdated', serverId, params);
-          break;
-      }
+  private setupClientHandlers(serverId: string, _client: Client, _session: ClientSession): void {
+    // TODO: The MCP SDK Client doesn't have a built-in event emitter interface
+    // Server notifications should be handled through the transport layer if needed
+    // For now, we'll skip notification handling to prevent runtime errors
+    this.logger.debug('Client handlers setup skipped - notification handling not available', {
+      serverId,
     });
   }
 

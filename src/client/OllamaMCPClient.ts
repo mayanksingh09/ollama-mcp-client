@@ -12,6 +12,7 @@ import { MessageHandler } from '../protocol/MessageHandler';
 import { ToolManager } from '../tools/ToolManager';
 import { ResourceManager } from '../resources/ResourceManager';
 import { PromptManager } from '../prompts/PromptManager';
+import { ResponseParser } from '../bridge/ResponseParser';
 import type { ITransport } from '../types/transport.types';
 import type {
   OllamaMCPClientConfig,
@@ -40,6 +41,7 @@ export class OllamaMCPClient extends EventEmitter {
   private toolManager: ToolManager;
   private resourceManager: ResourceManager;
   private promptManager: PromptManager;
+  private responseParser: ResponseParser;
   private messageHandlers: Map<string, MessageHandler> = new Map();
   private mcpClients: Map<string, Client> = new Map();
   private config: OllamaMCPClientConfig;
@@ -63,6 +65,7 @@ export class OllamaMCPClient extends EventEmitter {
     this.toolManager = new ToolManager(config.tools);
     this.resourceManager = new ResourceManager(config.resources);
     this.promptManager = new PromptManager(config.prompts);
+    this.responseParser = new ResponseParser();
 
     // Initialize logger
     this.logger = winston.createLogger({
@@ -411,7 +414,7 @@ export class OllamaMCPClient extends EventEmitter {
       })) as ChatCompletionResponse | void;
 
       // Parse response for tool calls
-      const toolCalls = this.parseToolCalls(response?.message?.content || '');
+      const toolCalls = await this.parseToolCalls(response?.message?.content || '');
 
       // Execute tool calls if any
       const toolResults: MCPToolResult[] = [];
@@ -545,27 +548,12 @@ export class OllamaMCPClient extends EventEmitter {
   /**
    * Setup client handlers
    */
-  private setupClientHandlers(serverId: string, client: Client, _session: ClientSession): void {
-    // Handle notifications from the server
-    const clientWithEvents = client as Client & {
-      on: (event: string, handler: (data: unknown) => void) => void;
-    };
-    clientWithEvents.on('notification', (notification: unknown) => {
-      const notif = notification as { method: string; params?: unknown };
-      const { method, params } = notif;
-      this.logger.debug('Notification received', { serverId, method, params });
-
-      switch (method) {
-        case 'notifications/tools/list_changed':
-          this.emit('toolsUpdated', serverId, params);
-          break;
-        case 'notifications/resources/list_changed':
-          this.emit('resourcesUpdated', serverId, params);
-          break;
-        case 'notifications/prompts/list_changed':
-          this.emit('promptsUpdated', serverId, params);
-          break;
-      }
+  private setupClientHandlers(serverId: string, _client: Client, _session: ClientSession): void {
+    // TODO: The MCP SDK Client doesn't have a built-in event emitter interface
+    // Server notifications should be handled through the transport layer if needed
+    // For now, we'll skip notification handling to prevent runtime errors
+    this.logger.debug('Client handlers setup skipped - notification handling not available', {
+      serverId,
     });
   }
 
@@ -702,10 +690,17 @@ export class OllamaMCPClient extends EventEmitter {
         }
       }
 
-      prompt += '\n\nTo use a tool, format your response as:\n';
+      prompt += '\n\nTo use a tool, you can format your response in one of these ways:\n';
+      prompt += '\n1. Explicit format:\n';
       prompt += 'TOOL_CALL: tool_name\n';
       prompt += 'ARGUMENTS: {"param1": "value1", "param2": "value2"}\n';
-      prompt += 'Then provide your regular response.';
+      prompt += '\n2. JSON format:\n';
+      prompt +=
+        'You can also respond with just the tool arguments as JSON if they match the tool schema.\n';
+      prompt += 'For example: {"sql": "SELECT * FROM table"} or {"query": "search term"}\n';
+      prompt += '\n3. Natural language with JSON:\n';
+      prompt += "You can explain what you're doing and include the tool call in various formats.\n";
+      prompt += '\nAfter using a tool, provide your response based on the results.';
     }
 
     return prompt;
@@ -714,10 +709,10 @@ export class OllamaMCPClient extends EventEmitter {
   /**
    * Parse tool calls from Ollama response
    */
-  private parseToolCalls(content: string): MCPToolCall[] {
+  private async parseToolCalls(content: string): Promise<MCPToolCall[]> {
     const toolCalls: MCPToolCall[] = [];
 
-    // Simple pattern matching for tool calls
+    // First try the explicit TOOL_CALL format
     const toolCallPattern = /TOOL_CALL:\s*([\w-]+)\s*\nARGUMENTS:\s*({[^}]+})/g;
     let match;
 
@@ -725,17 +720,97 @@ export class OllamaMCPClient extends EventEmitter {
       try {
         const toolName = match[1];
         const args = JSON.parse(match[2]);
-
         toolCalls.push({
           name: toolName,
           arguments: args,
         });
       } catch (error) {
-        this.logger.warn('Failed to parse tool call', { match: match[0], error });
+        this.logger.warn('Failed to parse explicit tool call', { match: match[0], error });
+      }
+    }
+
+    // If no explicit tool calls found, try ResponseParser
+    if (toolCalls.length === 0) {
+      try {
+        // Get available tools for context
+        const tools = await this.toolManager.getAllTools();
+
+        // Use ResponseParser to detect tool calls in various formats
+        const parsedCalls = this.responseParser.parse(content, tools);
+
+        for (const parsedCall of parsedCalls) {
+          toolCalls.push({
+            name: parsedCall.toolName,
+            arguments: parsedCall.arguments || {},
+          });
+        }
+      } catch (error) {
+        this.logger.debug('ResponseParser did not find tool calls', { error });
+      }
+    }
+
+    // If still no tool calls, check for direct JSON that matches tool schemas
+    if (toolCalls.length === 0) {
+      try {
+        let contentTrimmed = content.trim();
+
+        // Check for JSON in markdown code blocks
+        const jsonBlockMatch = /```(?:json)?\s*\n?([\s\S]*?)\n?```/.exec(contentTrimmed);
+        if (jsonBlockMatch) {
+          contentTrimmed = jsonBlockMatch[1].trim();
+        }
+
+        // Try to parse as JSON
+        if (contentTrimmed.startsWith('{') && contentTrimmed.endsWith('}')) {
+          const jsonContent = JSON.parse(contentTrimmed);
+
+          // Get available tools
+          const tools = await this.toolManager.getAllTools();
+
+          // Check if this JSON matches any tool's input schema
+          for (const tool of tools) {
+            if (this.matchesToolSchema(jsonContent, tool)) {
+              toolCalls.push({
+                name: tool.name,
+                arguments: jsonContent,
+              });
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        // Not valid JSON, skip
+        this.logger.debug('Content is not valid JSON for direct tool matching', { error });
       }
     }
 
     return toolCalls;
+  }
+
+  /**
+   * Check if JSON content matches a tool's input schema
+   */
+  private matchesToolSchema(content: Record<string, unknown>, tool: MCPTool): boolean {
+    if (!tool.inputSchema?.properties) {
+      return false;
+    }
+
+    const properties = tool.inputSchema.properties as Record<string, unknown>;
+    const contentKeys = Object.keys(content);
+    const schemaKeys = Object.keys(properties);
+
+    // Check if content has any of the schema's required properties
+    const required = (tool.inputSchema.required as string[]) || [];
+    if (required.length > 0) {
+      const hasRequired = required.some((key) => key in content);
+      if (hasRequired) {
+        return true;
+      }
+    }
+
+    // Check if content keys match schema keys (at least 50% match)
+    const matchingKeys = contentKeys.filter((key) => schemaKeys.includes(key));
+    return matchingKeys.length > 0 && matchingKeys.length >= Math.ceil(schemaKeys.length * 0.5);
   }
 
   /**

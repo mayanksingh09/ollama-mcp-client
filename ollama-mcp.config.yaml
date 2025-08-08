@@ -1,6 +1,20 @@
 ollama:
   host: http://localhost:11434
   # model: llama3.2  # Optional: specify a model, or auto-detect will be used
+
+# MCP Servers Configuration
+servers:
+  # Supabase PostgreSQL Server
+  - name: supabase
+    type: stdio
+    autoConnect: true # Set to true to connect automatically when starting the client
+    stdio:
+      command: npx
+      args:
+        - '-y'
+        - '@modelcontextprotocol/server-postgres'
+        - 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+
 logging:
   level: info
 session:
