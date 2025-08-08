@@ -476,4 +476,111 @@ export class ToolDecisionEngine {
     const existing = this.contextualPatterns.get(category) || [];
     this.contextualPatterns.set(category, [...existing, ...patterns]);
   }
+
+  // Adapter methods for test compatibility
+  async analyzeIntent(
+    message: string,
+    tools: MCPTool[]
+  ): Promise<{
+    shouldUseTool: boolean;
+    confidence: number;
+    suggestedTools: MCPTool[];
+    reasoning?: string;
+  }> {
+    const decision = await this.analyzeResponse(message, tools);
+
+    const suggestedTools = decision.toolCalls
+      .map((call) => {
+        const tool = tools.find((t) => t.name === call.toolName);
+        return tool;
+      })
+      .filter((tool): tool is MCPTool => tool !== undefined);
+
+    return {
+      shouldUseTool: decision.shouldInvoke,
+      confidence: decision.confidence,
+      suggestedTools,
+      reasoning: decision.reasoning,
+    };
+  }
+
+  scoreToolRelevance(tool: MCPTool, message: string): number {
+    return this.calculateToolRelevance(tool, message.toLowerCase(), '');
+  }
+
+  extractToolParameters(tool: MCPTool, message: string): Record<string, unknown> {
+    return this.inferArguments(tool, message);
+  }
+
+  rankTools(tools: MCPTool[], message: string): MCPTool[] {
+    const scores = tools.map((tool) => ({
+      tool,
+      score: this.calculateToolRelevance(tool, message.toLowerCase(), ''),
+    }));
+
+    scores.sort((a, b) => b.score - a.score);
+    return scores.map((s) => s.tool);
+  }
+
+  detectChainedTools(message: string, tools: MCPTool[]): MCPTool[] {
+    const calls: ParsedToolCall[] = [];
+    this.detectChainedCalls(message, tools, calls);
+
+    const chainedTools = calls
+      .map((call) => {
+        const tool = tools.find((t) => t.name === call.toolName);
+        return tool;
+      })
+      .filter((tool): tool is MCPTool => tool !== undefined);
+
+    return chainedTools;
+  }
+
+  validateToolCall(
+    tool: MCPTool,
+    args: Record<string, unknown>
+  ): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!tool.inputSchema?.properties) {
+      return { valid: true, errors: [] };
+    }
+
+    const required = (tool.inputSchema.required || []) as string[];
+    const properties = tool.inputSchema.properties as Record<string, unknown>;
+
+    for (const reqField of required) {
+      if (!(reqField in args)) {
+        errors.push(`Missing required field: ${reqField}`);
+      }
+    }
+
+    for (const [key] of Object.entries(args)) {
+      if (!(key in properties)) {
+        errors.push(`Unknown field: ${key}`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  }
+
+  parseToolCall(message: string, tools: MCPTool[]): ParsedToolCall | null {
+    const calls = this.responseParser.parse(message, tools);
+    return calls.length > 0 ? calls[0] : null;
+  }
+
+  updateOptions(options: Partial<ToolSelectionOptions>): void {
+    this.setOptions(options);
+  }
+
+  getUsageStats(): Record<string, number> {
+    return Object.fromEntries(this.toolUsageHistory);
+  }
+
+  clearUsageHistory(): void {
+    this.resetHistory();
+  }
 }

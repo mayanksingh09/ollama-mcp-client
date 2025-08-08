@@ -283,7 +283,8 @@ export class CompoundRateLimiter extends EventEmitter {
     if (!allAcquired) {
       for (const { name, result } of results) {
         if (result) {
-          const limiter = this.limiters.get(name)!;
+          const limiter = this.limiters.get(name);
+          if (!limiter) continue;
           limiter.reset();
         }
       }
@@ -318,5 +319,60 @@ export class CompoundRateLimiter extends EventEmitter {
 
     this.limiters.clear();
     this.removeAllListeners();
+  }
+}
+
+export class RateLimiter {
+  private limiter: TokenBucketRateLimiter;
+
+  constructor(config?: { maxRequests?: number; windowMs?: number; maxBurst?: number }) {
+    const rateLimiterConfig: RateLimiterConfig = {
+      maxTokens: config?.maxRequests ?? 100,
+      refillRate: config?.maxRequests ?? 100,
+      refillInterval: config?.windowMs ?? 60000,
+      burst: config?.maxBurst !== undefined,
+      waitTimeout: 5000,
+    };
+
+    this.limiter = new TokenBucketRateLimiter(rateLimiterConfig);
+  }
+
+  async acquire(weight = 1): Promise<void> {
+    await this.limiter.acquire(weight);
+  }
+
+  tryAcquire(weight = 1): boolean {
+    return this.limiter.tryAcquire(weight);
+  }
+
+  reset(): void {
+    this.limiter.reset();
+  }
+
+  getAvailableTokens(): number {
+    return this.limiter.getAvailableTokens();
+  }
+
+  getNextResetTime(): number {
+    // Access private property for compatibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return Date.now() + (this.limiter as any).refillInterval;
+  }
+
+  getStatistics(): {
+    totalRequests: number;
+    allowedRequests: number;
+    rejectedRequests: number;
+  } {
+    const stats = this.limiter.getStats();
+    return {
+      totalRequests: stats.totalRequests,
+      allowedRequests: stats.acceptedRequests,
+      rejectedRequests: stats.rejectedRequests,
+    };
+  }
+
+  resetStatistics(): void {
+    this.limiter.reset();
   }
 }

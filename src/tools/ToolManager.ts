@@ -631,4 +631,23 @@ export class ToolManager extends EventEmitter {
 
     this.logger.info('ToolManager cleaned up');
   }
+
+  // Adapter methods for test compatibility
+  async getAllTools(): Promise<MCPTool[]> {
+    const extendedTools = await this.listTools();
+    return extendedTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }));
+  }
+
+  async getToolsByServer(serverId: string): Promise<MCPTool[]> {
+    const extendedTools = await this.listTools({ serverId });
+    return extendedTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }));
+  }
 }

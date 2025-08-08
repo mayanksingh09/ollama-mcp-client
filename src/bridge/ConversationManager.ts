@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import type { Message } from '../ollama/types';
 import type {
   ConversationEntry,
+  ConversationMessage,
   ConversationContext,
   ConversationOptions,
   ToolCallRecord,
@@ -15,11 +16,14 @@ export class ConversationManager extends EventEmitter {
   private options: Required<ConversationOptions>;
   private tokenEstimator: TokenEstimator;
 
-  constructor(options: ConversationOptions = {}, tokenEstimator?: TokenEstimator) {
+  constructor(
+    options: ConversationOptions & { maxMessages?: number } = {},
+    tokenEstimator?: TokenEstimator
+  ) {
     super();
     this.options = {
       maxTokens: options.maxTokens || 4096,
-      maxEntries: options.maxEntries || 100,
+      maxEntries: options.maxEntries || options.maxMessages || 100,
       summarizationThreshold: options.summarizationThreshold || 3500,
       persistSession: options.persistSession || false,
       sessionId: options.sessionId || this.generateContextId(),
@@ -319,6 +323,96 @@ export class ConversationManager extends EventEmitter {
   private generateToolCallId(): string {
     return `tool_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   }
+
+  // Adapter methods for backward compatibility with tests
+  addMessage(message: ConversationMessage): ConversationEntry {
+    const timestamp = message.timestamp ? new Date(message.timestamp) : new Date();
+    return this.addEntry(message.role, message.content, message.toolCalls, {
+      ...message.metadata,
+      originalTimestamp: timestamp,
+    });
+  }
+
+  clearHistory(): void {
+    const context = this.getActiveContext();
+    if (context) {
+      context.entries = [];
+      context.totalTokens = 0;
+      if (context.metadata) {
+        context.metadata.lastUpdated = new Date();
+      }
+      this.emit('historyCleared');
+    }
+  }
+
+  getMessageCount(): number {
+    const context = this.getActiveContext();
+    return context?.entries.length || 0;
+  }
+
+  getSummary(): string {
+    const context = this.getActiveContext();
+    if (!context || context.entries.length === 0) {
+      return 'No conversation history';
+    }
+    return this.createSummary(context.entries);
+  }
+
+  summarize(): void {
+    const context = this.getActiveContext();
+    if (context) {
+      this.triggerSummarization(context);
+    }
+  }
+
+  getContext(): ConversationContext | undefined {
+    return this.getActiveContext();
+  }
+
+  extractToolCalls(): ToolCallRecord[] {
+    const context = this.getActiveContext();
+    if (!context) return [];
+
+    const toolCalls: ToolCallRecord[] = [];
+    for (const entry of context.entries) {
+      if (entry.toolCalls) {
+        toolCalls.push(...entry.toolCalls);
+      }
+    }
+    return toolCalls;
+  }
+
+  formatForModel(): Message[] {
+    return this.getMessages();
+  }
+
+  getLastUserMessage(): ConversationEntry | undefined {
+    const context = this.getActiveContext();
+    if (!context) return undefined;
+
+    for (let i = context.entries.length - 1; i >= 0; i--) {
+      if (context.entries[i].role === 'user') {
+        return context.entries[i];
+      }
+    }
+    return undefined;
+  }
+
+  getLastAssistantMessage(): ConversationEntry | undefined {
+    const context = this.getActiveContext();
+    if (!context) return undefined;
+
+    for (let i = context.entries.length - 1; i >= 0; i--) {
+      if (context.entries[i].role === 'assistant') {
+        return context.entries[i];
+      }
+    }
+    return undefined;
+  }
+
+  // Alias methods for test compatibility
+  export = this.exportContext.bind(this);
+  import = this.importContext.bind(this);
 }
 
 class SimpleTokenEstimator implements TokenEstimator {

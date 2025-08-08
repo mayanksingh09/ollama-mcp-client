@@ -11,6 +11,14 @@ export interface ConversationEntry {
   tokenCount?: number;
 }
 
+export interface ConversationMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  timestamp?: number;
+  toolCalls?: ToolCallRecord[];
+  metadata?: Record<string, unknown>;
+}
+
 export interface ToolCallRecord {
   id: string;
   toolName: string;
