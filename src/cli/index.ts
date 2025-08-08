@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --no-warnings
 
 import { Command } from 'commander';
 import chalk from 'chalk';
@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import { ConfigManager } from './config/ConfigManager';
 import { SpinnerManager } from './utils/spinners';
 import { formatError, formatInfo } from './utils/formatters';
+import { configureGlobalLogLevel, mapLogLevel } from './utils/logger-config';
 import connectCommand from './commands/connect';
 import chatCommand from './commands/chat';
 import listCommand from './commands/list';
@@ -42,9 +43,19 @@ async function main() {
     .option('-j, --json', 'output in JSON format')
     .option('-y, --yaml', 'output in YAML format')
     .option('--no-colors', 'disable colored output')
+    .option(
+      '--log-level <level>',
+      'set log level (none, error, warning, info, debug, all)',
+      'error'
+    )
     .hook('preAction', async (thisCommand) => {
       // Load configuration before any command
       const options = thisCommand.opts();
+
+      // Configure global log level FIRST before anything else
+      const logLevel = options.debug ? 'debug' : options.logLevel || 'error';
+      const winstonLevel = mapLogLevel(logLevel);
+      configureGlobalLogLevel(winstonLevel);
 
       // Set verbose mode for spinner
       if (options.debug) {

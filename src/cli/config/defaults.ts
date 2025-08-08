@@ -33,7 +33,7 @@ export const DEFAULT_CLIENT_CONFIG: Partial<OllamaMCPClientConfig> = {
     },
   },
   logging: {
-    level: (process.env.LOG_LEVEL as 'error' | 'warn' | 'info' | 'debug' | 'verbose') || 'info',
+    level: (process.env.LOG_LEVEL as 'error' | 'warn' | 'info' | 'debug' | 'verbose') || 'error',
     console: true,
     format: 'simple',
   },

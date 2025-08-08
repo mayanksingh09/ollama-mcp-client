@@ -70,3 +70,6 @@ typedoc/
 *.pid.lock
 .eslintcache
 .stylelintcache
+
+# Claude files
+.claude/*

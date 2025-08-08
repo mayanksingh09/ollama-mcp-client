@@ -142,20 +142,27 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
       await client.connect(transport as Parameters<typeof client.connect>[0]);
 
       // Suppress stderr output from stdio transport if log level is low
+      // Note: We only suppress stderr, not stdout, as stdout contains MCP protocol messages
       if (
         options.type === 'stdio' &&
         (process.env.LOG_LEVEL === 'error' || process.env.LOG_LEVEL === 'silent')
       ) {
         const stdioTransport = transport as StdioClientTransport;
-        // Access the stderr stream if available and pipe to null
-        const stderr = (
-          stdioTransport as Record<string, unknown> & {
-            _process?: { stderr?: NodeJS.ReadableStream };
+        // Access the stderr stream if available and suppress it
+        const processRef = (
+          stdioTransport as unknown as Record<string, unknown> & {
+            _process?: {
+              stderr?: NodeJS.ReadableStream;
+            };
           }
-        )._process?.stderr;
-        if (stderr) {
-          stderr.pause();
-          stderr.removeAllListeners();
+        )._process;
+
+        if (processRef?.stderr) {
+          // Redirect stderr to null to suppress server logs
+          processRef.stderr.pause();
+          processRef.stderr.removeAllListeners();
+          // Consume the data to prevent buffer overflow
+          processRef.stderr.on('data', () => {});
         }
       }
 

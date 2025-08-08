@@ -58,7 +58,8 @@ export class SimpleBox {
     const colorFn =
       borderColor === 'gray'
         ? chalk.gray
-        : (chalk as Record<string, (text: string) => string>)[borderColor] || chalk.white;
+        : (chalk as unknown as Record<string, (text: string) => string>)[borderColor] ||
+          chalk.white;
 
     const result: string[] = [];
 

@@ -90,7 +90,13 @@ export class PromptManager extends EventEmitter {
         discoveredPrompts.push(...extendedPrompts);
         this.emit('promptsDiscovered', { serverId: id, prompts });
       } catch (error) {
-        this.logger.error(`Failed to discover prompts from ${id}:`, error);
+        // Downgrade MCP Method not found errors to debug since they're expected
+        const err = error as Error & { code?: number };
+        if (err.code === -32601 || err.message?.includes('Method not found')) {
+          this.logger.debug(`Server ${id} does not support prompts (Method not found)`);
+        } else {
+          this.logger.error(`Failed to discover prompts from ${id}:`, error);
+        }
       }
     }
 

@@ -96,7 +96,13 @@ export class ResourceManager extends EventEmitter {
         discoveredResources.push(...extendedResources);
         this.emit('resourcesDiscovered', { serverId: id, resources });
       } catch (error) {
-        this.logger.error(`Failed to discover resources from ${id}:`, error);
+        // Downgrade MCP Method not found errors to debug since they're expected
+        const err = error as Error & { code?: number };
+        if (err.code === -32601 || err.message?.includes('Method not found')) {
+          this.logger.debug(`Server ${id} does not support resources (Method not found)`);
+        } else {
+          this.logger.error(`Failed to discover resources from ${id}:`, error);
+        }
       }
     }
 

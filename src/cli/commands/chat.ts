@@ -9,7 +9,6 @@ import { withEnhancedSpinner } from '../ui/enhanced-spinner';
 import { InputBox } from '../ui/input-box';
 import { formatError, formatInfo, formatToolResult } from '../utils/formatters';
 import { validateModel } from '../utils/validators';
-import { configureGlobalLogLevel, mapLogLevel } from '../utils/logger-config';
 import { OllamaClient } from '../../ollama/OllamaClient';
 
 const chatCommand = new Command('chat')
@@ -22,13 +21,7 @@ const chatCommand = new Command('chat')
   .option('--no-history', 'disable conversation history')
   .option('--stream', 'enable streaming responses')
   .option('--simple-cli', 'use simple CLI without enhanced UI or boxed input')
-  .option('--log-level <level>', 'set log level (none, error, warning, info, debug, all)', 'error')
   .action(async (options, command) => {
-    // Configure log level IMMEDIATELY before anything else
-    const logLevel = options.logLevel || 'error';
-    const winstonLevel = mapLogLevel(logLevel);
-    configureGlobalLogLevel(winstonLevel);
-
     const configManager: ConfigManager = command.parent.configManager;
     const config = configManager.get();
     const colors = config.output?.colors !== false;
@@ -38,24 +31,13 @@ const chatCommand = new Command('chat')
       let client = (global as Record<string, unknown>).mcpClient as OllamaMCPClient | undefined;
 
       if (!client) {
-        // Create a new client with configured log level
-        const clientConfig = {
-          ...config,
-          logging: {
-            ...config.logging,
-            level: winstonLevel as 'error' | 'warn' | 'info' | 'debug' | 'verbose',
-          },
-        };
-        client = new OllamaMCPClient(clientConfig);
+        // Create a new client
+        client = new OllamaMCPClient(config);
 
         // Auto-connect to servers with autoConnect flag
         const servers = configManager.listServers().filter((s) => s.autoConnect);
         if (servers.length > 0) {
-          if (logLevel !== 'error' && logLevel !== 'none') {
-            console.log(
-              formatInfo(`Auto-connecting to ${servers.length} server(s)...`, { colors })
-            );
-          }
+          console.log(formatInfo(`Auto-connecting to ${servers.length} server(s)...`, { colors }));
           for (const server of servers) {
             try {
               const { serverConfigToConnectionOptions } = await import('../config/ConfigSchema');
