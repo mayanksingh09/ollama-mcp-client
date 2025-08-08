@@ -34,12 +34,13 @@ export class PromptManager extends EventEmitter {
     this.sampler = new PromptSampler();
 
     this.logger = winston.createLogger({
-      level: 'info',
+      level: process.env.LOG_LEVEL || 'error',
       format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
       defaultMeta: { service: 'PromptManager' },
       transports: [
         new winston.transports.Console({
           format: winston.format.simple(),
+          silent: process.env.LOG_LEVEL === 'silent',
         }),
       ],
     });

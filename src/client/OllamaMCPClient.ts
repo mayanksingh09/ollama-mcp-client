@@ -69,7 +69,7 @@ export class OllamaMCPClient extends EventEmitter {
 
     // Initialize logger
     this.logger = winston.createLogger({
-      level: config.logging?.level || 'info',
+      level: config.logging?.level || process.env.LOG_LEVEL || 'error',
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
@@ -79,6 +79,7 @@ export class OllamaMCPClient extends EventEmitter {
       transports: [
         new winston.transports.Console({
           format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+          silent: process.env.LOG_LEVEL === 'silent',
         }),
       ],
     });
@@ -125,11 +126,14 @@ export class OllamaMCPClient extends EventEmitter {
 
       if (connectionOptions.type === 'stdio') {
         // Use MCP SDK's StdioClientTransport
-        transport = new StdioClientTransport({
+        const stdioTransport = new StdioClientTransport({
           command: connectionOptions.command,
           args: connectionOptions.args,
           env: connectionOptions.env,
         });
+
+        // After connecting, redirect stderr if log level is low
+        transport = stdioTransport;
       } else {
         // Use our custom HTTP/SSE transport
         const customTransport = this.transportManager.createTransport(
@@ -154,6 +158,24 @@ export class OllamaMCPClient extends EventEmitter {
 
       // Connect client to transport
       await client.connect(transport as Parameters<typeof client.connect>[0]);
+
+      // Suppress stderr output from stdio transport if log level is low
+      if (
+        connectionOptions.type === 'stdio' &&
+        (process.env.LOG_LEVEL === 'error' || process.env.LOG_LEVEL === 'silent')
+      ) {
+        const stdioTransport = transport as StdioClientTransport;
+        // Access the stderr stream if available and pipe to null
+        const stderr = (
+          stdioTransport as Record<string, unknown> & {
+            _process?: { stderr?: NodeJS.ReadableStream };
+          }
+        )._process?.stderr;
+        if (stderr) {
+          stderr.pause();
+          stderr.removeAllListeners();
+        }
+      }
 
       // Store client and setup handlers
       this.mcpClients.set(serverId, client);

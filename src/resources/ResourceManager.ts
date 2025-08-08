@@ -36,7 +36,7 @@ export class ResourceManager extends EventEmitter {
     this.transformer = new ResourceTransformer();
 
     this.logger = winston.createLogger({
-      level: 'info',
+      level: process.env.LOG_LEVEL || 'error',
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
@@ -46,6 +46,7 @@ export class ResourceManager extends EventEmitter {
       transports: [
         new winston.transports.Console({
           format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+          silent: process.env.LOG_LEVEL === 'silent',
         }),
       ],
     });

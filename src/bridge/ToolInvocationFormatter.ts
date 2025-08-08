@@ -204,9 +204,9 @@ export class ToolInvocationFormatter {
     if (Array.isArray(value)) return 'array';
 
     const type = typeof value;
-    if (type === 'number') {
-      return Number.isInteger(value) ? 'integer' : 'number';
-    }
+    // Don't differentiate between integer and number for validation
+    // The schema will specify if it needs integer specifically
+    // This fixes the "expected number, got integer" validation errors
 
     return type;
   }

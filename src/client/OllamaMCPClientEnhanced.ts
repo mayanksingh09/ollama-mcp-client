@@ -86,7 +86,7 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
     this.functionCallingSimulator = new FunctionCallingSimulator(config.bridge?.functionCalling);
 
     this.logger = winston.createLogger({
-      level: config.logging?.level || 'info',
+      level: config.logging?.level || process.env.LOG_LEVEL || 'error',
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
@@ -96,6 +96,7 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
       transports: [
         new winston.transports.Console({
           format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+          silent: process.env.LOG_LEVEL === 'silent',
         }),
       ],
     });
@@ -114,11 +115,12 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
       let transport: unknown;
 
       if (options.type === 'stdio') {
-        transport = new StdioClientTransport({
+        const stdioTransport = new StdioClientTransport({
           command: options.command,
           args: options.args,
           env: options.env,
         });
+        transport = stdioTransport;
       } else {
         const customTransport = this.transportManager.createTransport(
           options,
@@ -138,6 +140,24 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
       );
 
       await client.connect(transport as Parameters<typeof client.connect>[0]);
+
+      // Suppress stderr output from stdio transport if log level is low
+      if (
+        options.type === 'stdio' &&
+        (process.env.LOG_LEVEL === 'error' || process.env.LOG_LEVEL === 'silent')
+      ) {
+        const stdioTransport = transport as StdioClientTransport;
+        // Access the stderr stream if available and pipe to null
+        const stderr = (
+          stdioTransport as Record<string, unknown> & {
+            _process?: { stderr?: NodeJS.ReadableStream };
+          }
+        )._process?.stderr;
+        if (stderr) {
+          stderr.pause();
+          stderr.removeAllListeners();
+        }
+      }
 
       this.mcpClients.set(serverId, client);
       this.setupClientHandlers(serverId, client, session);

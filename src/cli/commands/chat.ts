@@ -5,8 +5,11 @@ import inquirer from 'inquirer';
 import { OllamaMCPClient } from '../../client/OllamaMCPClient';
 import { ConfigManager } from '../config/ConfigManager';
 import { withSpinner } from '../utils/spinners';
+import { withEnhancedSpinner } from '../ui/enhanced-spinner';
+import { InputBox } from '../ui/input-box';
 import { formatError, formatInfo, formatToolResult } from '../utils/formatters';
 import { validateModel } from '../utils/validators';
+import { configureGlobalLogLevel, mapLogLevel } from '../utils/logger-config';
 import { OllamaClient } from '../../ollama/OllamaClient';
 
 const chatCommand = new Command('chat')
@@ -18,7 +21,14 @@ const chatCommand = new Command('chat')
   .option('--no-tools', 'disable MCP tool usage')
   .option('--no-history', 'disable conversation history')
   .option('--stream', 'enable streaming responses')
+  .option('--simple-cli', 'use simple CLI without enhanced UI or boxed input')
+  .option('--log-level <level>', 'set log level (none, error, warning, info, debug, all)', 'error')
   .action(async (options, command) => {
+    // Configure log level IMMEDIATELY before anything else
+    const logLevel = options.logLevel || 'error';
+    const winstonLevel = mapLogLevel(logLevel);
+    configureGlobalLogLevel(winstonLevel);
+
     const configManager: ConfigManager = command.parent.configManager;
     const config = configManager.get();
     const colors = config.output?.colors !== false;
@@ -28,13 +38,24 @@ const chatCommand = new Command('chat')
       let client = (global as Record<string, unknown>).mcpClient as OllamaMCPClient | undefined;
 
       if (!client) {
-        // Create a new client
-        client = new OllamaMCPClient(config);
+        // Create a new client with configured log level
+        const clientConfig = {
+          ...config,
+          logging: {
+            ...config.logging,
+            level: winstonLevel as 'error' | 'warn' | 'info' | 'debug' | 'verbose',
+          },
+        };
+        client = new OllamaMCPClient(clientConfig);
 
         // Auto-connect to servers with autoConnect flag
         const servers = configManager.listServers().filter((s) => s.autoConnect);
         if (servers.length > 0) {
-          console.log(formatInfo(`Auto-connecting to ${servers.length} server(s)...`, { colors }));
+          if (logLevel !== 'error' && logLevel !== 'none') {
+            console.log(
+              formatInfo(`Auto-connecting to ${servers.length} server(s)...`, { colors })
+            );
+          }
           for (const server of servers) {
             try {
               const { serverConfigToConnectionOptions } = await import('../config/ConfigSchema');
@@ -112,6 +133,9 @@ const chatCommand = new Command('chat')
       const useTools = options.tools !== false;
       const useHistory = options.history !== false;
       const stream = options.stream || false;
+      const useSimpleCli = options.simpleCli || false;
+      const useEnhancedUI = !useSimpleCli;
+      const useBoxed = !useSimpleCli;
 
       console.log(chalk.bold.cyan('🤖 Ollama MCP Chat'));
       console.log(
@@ -141,11 +165,16 @@ const chatCommand = new Command('chat')
       );
       console.log();
 
+      // Show initial input indicator if using boxed mode
+      if (useBoxed) {
+        InputBox.showLightInput();
+      }
+
       // Create readline interface
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
-        prompt: chalk.bold.green('You> '),
+        prompt: useBoxed ? chalk.cyan('  › ') : chalk.green('> '),
       });
 
       // Handle multi-line input
@@ -196,11 +225,22 @@ const chatCommand = new Command('chat')
         rl.pause();
 
         try {
+          // Close input box if using boxed mode
+          if (useBoxed) {
+            // Clear the input box area
+            process.stdout.write('\x1B[3A\x1B[2K'); // Move up 3 lines and clear
+            process.stdout.write('\x1B[1B\x1B[2K'); // Move down 1 and clear
+            process.stdout.write('\x1B[1B\x1B[2K'); // Move down 1 and clear
+            process.stdout.write('\r'); // Return to start
+            console.log(chalk.green('>') + ' ' + input);
+          } else {
+            console.log();
+          }
           console.log();
 
           if (stream) {
             // Streaming response (TODO: implement streaming)
-            console.log(chalk.bold.blue('Assistant> '));
+            console.log(chalk.blue('•') + ' ');
             const response = await client.chat(input, {
               model,
               temperature,
@@ -211,8 +251,19 @@ const chatCommand = new Command('chat')
             console.log(response.message);
           } else {
             // Non-streaming response with spinner
-            const response = await withSpinner(
-              'Thinking...',
+            const spinnerFn = useEnhancedUI ? withEnhancedSpinner : withSpinner;
+            const spinnerOptions = useEnhancedUI
+              ? {
+                  successText: '',
+                  showStream: true,
+                  showTimer: true,
+                }
+              : {
+                  successText: '',
+                };
+
+            const response = await spinnerFn(
+              'Thinking',
               () =>
                 client.chat(input, {
                   model,
@@ -221,20 +272,22 @@ const chatCommand = new Command('chat')
                   includeHistory: useHistory,
                   systemPrompt: options.system,
                 }),
-              {
-                successText: '',
-              }
+              spinnerOptions
             );
 
-            console.log(chalk.bold.blue('Assistant> '));
+            process.stdout.write(chalk.blue('•') + ' ');
             console.log(response.message);
 
             // Show tool usage if any
             if (response.toolCalls && response.toolCalls.length > 0) {
               console.log();
-              console.log(chalk.dim('Tools used:'));
+              console.log(chalk.dim('Tool calls:'));
               for (const toolCall of response.toolCalls) {
-                console.log(chalk.dim(`  • ${toolCall.toolName}`));
+                const argsSummary =
+                  Object.keys(toolCall.arguments || {}).length > 0
+                    ? chalk.dim(` with ${Object.keys(toolCall.arguments).length} args`)
+                    : '';
+                console.log(chalk.dim(`  › ${toolCall.toolName}${argsSummary}`));
                 if (
                   config.output?.format === 'pretty' &&
                   toolCall.result &&
@@ -247,11 +300,14 @@ const chatCommand = new Command('chat')
                     {
                       colors,
                       truncate: true,
-                      maxLength: 200,
+                      maxLength: 100,
                     }
                   );
                   if (formatted) {
-                    console.log(chalk.dim(`    ${formatted}`));
+                    const lines = formatted.split('\n');
+                    const preview =
+                      lines[0].length > 80 ? lines[0].substring(0, 77) + '...' : lines[0];
+                    console.log(chalk.dim(`    result: ${preview}`));
                   }
                 }
               }
@@ -276,6 +332,13 @@ const chatCommand = new Command('chat')
 
         // Resume readline
         rl.resume();
+
+        // Show input box again if using boxed mode
+        if (useBoxed) {
+          console.log();
+          InputBox.showLightInput();
+        }
+
         rl.prompt();
       });
 
