@@ -43,6 +43,7 @@ async function main() {
     .option('-j, --json', 'output in JSON format')
     .option('-y, --yaml', 'output in YAML format')
     .option('--no-colors', 'disable colored output')
+    .option('--ink-test', 'test Ink integration')
     .option(
       '--log-level <level>',
       'set log level (none, error, warning, info, debug, all)',
@@ -100,6 +101,14 @@ async function main() {
   // Interactive mode (default when no command is provided)
   program.action(async () => {
     const options = program.opts();
+
+    // Test Ink integration if flag is set
+    if (options.inkTest) {
+      const { testInk } = await import('./components/HelloInk');
+      testInk();
+      return;
+    }
+
     console.log(chalk.bold.cyan('🤖 Ollama MCP Client'));
     console.log(chalk.dim(`Version ${version}`));
     console.log();

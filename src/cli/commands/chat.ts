@@ -21,6 +21,7 @@ const chatCommand = new Command('chat')
   .option('--no-history', 'disable conversation history')
   .option('--stream', 'enable streaming responses')
   .option('--simple-cli', 'use simple CLI without enhanced UI or boxed input')
+  .option('--ink', 'use new Ink-based UI (experimental)')
   .action(async (options, command) => {
     const configManager: ConfigManager = command.parent.configManager;
     const config = configManager.get();
@@ -116,8 +117,23 @@ const chatCommand = new Command('chat')
       const useHistory = options.history !== false;
       const stream = options.stream || false;
       const useSimpleCli = options.simpleCli || false;
-      const useEnhancedUI = !useSimpleCli;
-      const useBoxed = !useSimpleCli;
+      const useInk = options.ink || false;
+      const useEnhancedUI = !useSimpleCli && !useInk;
+      const useBoxed = !useSimpleCli && !useInk;
+
+      // Use Ink UI if flag is set
+      if (useInk) {
+        // Use dynamic import for the CommonJS wrapper to launch ESM Ink UI
+        const inkWrapper = await import('../ink-wrapper');
+        inkWrapper.launchInkUI({
+          model,
+          temperature,
+          maxTokens,
+          system: options.system,
+          config: options.config,
+        });
+        return;
+      }
 
       console.log(chalk.bold.cyan('🤖 Ollama MCP Chat'));
       console.log(

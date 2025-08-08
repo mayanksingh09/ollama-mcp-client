@@ -4,6 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2022", "DOM"],
     "types": ["node"],
+    "jsx": "react",
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -32,5 +33,5 @@
     "emitDecoratorMetadata": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests/**/*"]
+  "exclude": ["node_modules", "dist", "tests/**/*", "src/**/*.mts"]
 }
