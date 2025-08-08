@@ -60,6 +60,6 @@ export default [
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '*.js', '*.d.ts', 'coverage/**', '.husky/**', 'tests/**'],
+    ignores: ['dist/**', 'node_modules/**', '*.js', '*.d.ts', 'coverage/**', '.husky/**', 'tests/**', 'examples/**'],
   },
 ];

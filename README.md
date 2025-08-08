@@ -96,7 +96,7 @@ import { OllamaMCPClient } from 'ollama-mcp-client';
 const client = new OllamaMCPClient({
   ollama: {
     host: 'http://localhost:11434',
-    model: 'llama2'
+    // model: 'llama3.2'  // Optional: specify a model, or auto-detect will be used
   },
   logging: {
     level: 'info'
@@ -191,7 +191,7 @@ ollama-mcp-client/
 const client = new OllamaMCPClient({
   ollama: {
     host: string,            // Ollama server URL (default: http://localhost:11434)
-    model: string,           // Default model to use (e.g., 'llama2', 'codellama')
+    model?: string,          // Optional: specify a model (e.g., 'llama3.2', 'mistral', 'codellama') or auto-detect will be used
     timeout?: number,        // Request timeout in ms (default: 60000)
     headers?: Record<string, string>,  // Custom headers for Ollama requests
   },

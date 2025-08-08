@@ -437,7 +437,7 @@ export class InteractiveSession {
     const colors = config.output?.colors !== false;
 
     if (args.length === 0) {
-      console.log(`Current model: ${config.ollama?.model || 'llama2'}`);
+      console.log(`Current model: ${config.ollama?.model || 'auto-detect'}`);
       return;
     }
 
@@ -501,7 +501,7 @@ export class InteractiveSession {
   private showWelcome(): void {
     const config = this.configManager.get();
     console.log(chalk.bold.cyan('\n🤖 Ollama MCP Interactive Session'));
-    console.log(chalk.dim(`Model: ${config.ollama?.model || 'llama2'}`));
+    console.log(chalk.dim(`Model: ${config.ollama?.model || 'auto-detect'}`));
     console.log(chalk.dim('Type "help" for commands or just start chatting'));
     console.log();
   }

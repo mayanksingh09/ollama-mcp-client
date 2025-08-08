@@ -11,7 +11,7 @@ export const DEFAULT_CONFIG_PATHS = [
 export const DEFAULT_CLIENT_CONFIG: Partial<OllamaMCPClientConfig> = {
   ollama: {
     host: process.env.OLLAMA_HOST || 'http://localhost:11434',
-    model: process.env.OLLAMA_MODEL || 'llama2',
+    model: process.env.OLLAMA_MODEL || undefined,
     timeout: 60000,
   },
   mcp: {

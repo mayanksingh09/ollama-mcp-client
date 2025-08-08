@@ -117,7 +117,7 @@ const configCommand = new Command('config')
                 type: 'input',
                 name: 'ollama.model',
                 message: 'Default Ollama model:',
-                default: 'llama2',
+                default: undefined,
               },
               {
                 type: 'list',
@@ -173,7 +173,7 @@ const configCommand = new Command('config')
             newConfig = {
               ollama: {
                 host: 'http://localhost:11434',
-                model: 'llama2',
+                model: undefined,
               },
               logging: {
                 level: 'info',

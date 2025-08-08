@@ -332,6 +332,30 @@ export class OllamaMCPClient extends EventEmitter {
   }
 
   /**
+   * Auto-detect the first available Ollama model
+   */
+  private async getDefaultModel(): Promise<string> {
+    try {
+      const modelsResponse = await this.ollamaClient.listModels();
+      const models = modelsResponse.models || [];
+
+      if (models.length === 0) {
+        throw new Error(
+          'No Ollama models found. Please install a model first using: ollama pull <model-name>'
+        );
+      }
+
+      // Return the first available model
+      return models[0].name;
+    } catch (error) {
+      this.logger.error('Failed to auto-detect Ollama model', { error });
+      throw new Error(
+        'Failed to detect available Ollama models. Please ensure Ollama is running and has at least one model installed.'
+      );
+    }
+  }
+
+  /**
    * Chat with Ollama and use MCP tools
    */
   async chat(message: string, options?: ChatOptions): Promise<ChatResponse> {
@@ -362,9 +386,15 @@ export class OllamaMCPClient extends EventEmitter {
         ? this.sessionManager.getConversationHistory(session.id, 10)
         : [];
 
+      // Determine model to use: from options, config, or auto-detect
+      let model = options?.model || this.config.ollama?.model;
+      if (!model) {
+        model = await this.getDefaultModel();
+      }
+
       // Call Ollama with tool descriptions
       const response = (await this.ollamaClient.chat({
-        model: options?.model || this.config.ollama?.model || 'llama2',
+        model,
         messages: [
           { role: 'system', content: systemPrompt },
           ...history.map((h) => ({
@@ -419,7 +449,7 @@ export class OllamaMCPClient extends EventEmitter {
       if (toolResults.length > 0) {
         const toolContext = this.formatToolResults(toolResults);
         const finalChat = (await this.ollamaClient.chat({
-          model: options?.model || this.config.ollama?.model || 'llama2',
+          model,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message },

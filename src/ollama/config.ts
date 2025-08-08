@@ -143,8 +143,15 @@ export class ConfigManager {
   }
 
   getBaseUrl(): string {
-    const protocol = 'http';
     const host = this.config.host || 'localhost';
+
+    // If host already contains protocol (http:// or https://), return it as-is
+    if (host.startsWith('http://') || host.startsWith('https://')) {
+      return host;
+    }
+
+    // Otherwise, construct the URL
+    const protocol = 'http';
     const port = this.config.port || 11434;
     return `${protocol}://${host}:${port}`;
   }

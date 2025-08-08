@@ -1,11 +1,13 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as readline from 'readline';
+import inquirer from 'inquirer';
 import { OllamaMCPClient } from '../../client/OllamaMCPClient';
 import { ConfigManager } from '../config/ConfigManager';
 import { withSpinner } from '../utils/spinners';
 import { formatError, formatInfo, formatToolResult } from '../utils/formatters';
 import { validateModel } from '../utils/validators';
+import { OllamaClient } from '../../ollama/OllamaClient';
 
 const chatCommand = new Command('chat')
   .description('Start an interactive chat session with Ollama and MCP tools')
@@ -52,7 +54,59 @@ const chatCommand = new Command('chat')
         throw new Error('Invalid model name');
       }
 
-      const model = options.model || config.ollama?.model || 'llama2';
+      let model = options.model || config.ollama?.model;
+
+      // If no model is specified, show interactive model selector
+      if (!model) {
+        const ollamaClient = new OllamaClient(config.ollama);
+
+        try {
+          const modelsResponse = await withSpinner(
+            'Fetching available Ollama models...',
+            () => ollamaClient.listModels(),
+            { successText: '' }
+          );
+
+          const models = modelsResponse.models || [];
+
+          if (models.length === 0) {
+            console.log(chalk.yellow('No Ollama models found. Please install a model first:'));
+            console.log(chalk.dim('  ollama pull llama3.2'));
+            console.log(chalk.dim('  ollama pull mistral'));
+            console.log(chalk.dim('  ollama pull codellama'));
+            process.exit(1);
+          }
+
+          // Format model choices for inquirer
+          const modelChoices = models.map((m) => ({
+            name: `${m.name} ${chalk.dim(`(${formatSize(m.size)})`)}`,
+            value: m.name,
+            short: m.name,
+          }));
+
+          const answer = await inquirer.prompt([
+            {
+              type: 'list',
+              name: 'model',
+              message: 'Select an Ollama model to use:',
+              choices: modelChoices,
+              pageSize: 10,
+            },
+          ]);
+
+          model = answer.model;
+          console.log();
+        } catch {
+          console.log(chalk.red('Error: Could not fetch models from Ollama.'));
+          console.log(
+            chalk.yellow('Please ensure Ollama is running and has at least one model installed:')
+          );
+          console.log(chalk.dim('  ollama pull llama3.2'));
+          console.log(chalk.dim('  ollama pull mistral'));
+          console.log(chalk.dim('  ollama pull codellama'));
+          process.exit(1);
+        }
+      }
       const temperature = options.temperature ?? 0.7;
       const maxTokens = options.maxTokens;
       const useTools = options.tools !== false;
@@ -237,5 +291,18 @@ const chatCommand = new Command('chat')
       process.exit(1);
     }
   });
+
+function formatSize(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+}
 
 export default chatCommand;

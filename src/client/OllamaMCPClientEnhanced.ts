@@ -180,6 +180,30 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
     }
   }
 
+  /**
+   * Auto-detect the first available Ollama model
+   */
+  private async getDefaultModel(): Promise<string> {
+    try {
+      const modelsResponse = await this.ollamaClient.listModels();
+      const models = modelsResponse.models || [];
+
+      if (models.length === 0) {
+        throw new Error(
+          'No Ollama models found. Please install a model first using: ollama pull <model-name>'
+        );
+      }
+
+      // Return the first available model
+      return models[0].name;
+    } catch (error) {
+      this.logger.error('Failed to auto-detect Ollama model', { error });
+      throw new Error(
+        'Failed to detect available Ollama models. Please ensure Ollama is running and has at least one model installed.'
+      );
+    }
+  }
+
   async chat(message: string, options?: ChatOptions): Promise<ChatResponse> {
     const conversationEntry = this.conversationManager.addEntry('user', message);
 
@@ -193,7 +217,11 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
         inputSchema: t.inputSchema,
       }));
 
-      const modelName = options?.model || this.config.ollama?.model || 'llama2';
+      // Determine model to use: from options, config, or auto-detect
+      let modelName = options?.model || this.config.ollama?.model;
+      if (!modelName) {
+        modelName = await this.getDefaultModel();
+      }
 
       let messages: Message[];
       if (this.shouldUseFunctionSimulator(modelName)) {
@@ -399,7 +427,8 @@ export class OllamaMCPClientEnhanced extends EventEmitter {
     messageCount: number;
     tokenCount: number;
   } {
-    const modelName = this.config.ollama?.model || 'llama2';
+    // Try to use configured model, otherwise use a default context size
+    const modelName = this.config.ollama?.model || 'default';
     const messages = this.conversationManager.getMessages();
     const window = this.contextWindowManager.manageWindow(messages, modelName);
     const stats = this.contextWindowManager.getStatistics(window);

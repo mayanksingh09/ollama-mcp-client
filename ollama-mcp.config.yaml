@@ -1,0 +1,11 @@
+ollama:
+  host: http://localhost:11434
+  # model: llama3.2  # Optional: specify a model, or auto-detect will be used
+logging:
+  level: info
+session:
+  persist: true
+  storagePath: /Users/mayanksingh/.ollama-mcp/sessions
+output:
+  format: pretty
+  colors: true

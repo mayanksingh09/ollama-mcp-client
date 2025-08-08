@@ -9,7 +9,7 @@ async function main() {
   const client = new OllamaMCPClient({
     ollama: {
       host: 'http://localhost:11434',
-      model: 'llama2',
+      // model: 'llama3.2',  // Optional: specify a model, or auto-detect will be used
     },
     mcp: {
       name: 'example-client',
